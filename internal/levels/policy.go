@@ -33,16 +33,26 @@ var DefaultResearchAllowlist = []string{
 
 // Policy builds the OpenSandbox networkPolicy for level. A nil policy
 // means the field should be omitted from the create request entirely
-// (unrestricted default networking) — that's the case for both Offline
-// and Full today. For Offline this relies on OpenSandbox's default
-// sandbox networking being able to reach Ollama; that's flagged as an
-// open question to verify empirically (implementation spec Known Unknown
-// #1) rather than assumed here — if it turns out not to be reachable,
-// Offline will need an explicit minimal allowlist instead of a nil
-// policy.
-func Policy(level Level, researchAllowlist []string) (*opensandbox.NetworkPolicy, error) {
+// (unrestricted default networking) — that's the case for Full, which is
+// deliberately unfiltered by design.
+//
+// Offline is deny-by-default instead: it allows only ollamaHost (an FQDN
+// — OpenSandbox's egress rules don't support raw IPs, so Ollama must be
+// reachable by hostname, e.g. host.docker.internal, for this to work). If
+// ollamaHost is empty, Offline still denies everything, including
+// Ollama — a misconfigured Offline level fails closed (the sandbox can't
+// reach the LLM and the failure is obvious) rather than failing open
+// (silently granting full network access, which would defeat the whole
+// point of a level named "Offline").
+func Policy(level Level, researchAllowlist []string, ollamaHost string) (*opensandbox.NetworkPolicy, error) {
 	switch level {
-	case Offline, Full:
+	case Offline:
+		var egress []opensandbox.EgressRule
+		if ollamaHost != "" {
+			egress = []opensandbox.EgressRule{{Action: "allow", Target: ollamaHost}}
+		}
+		return &opensandbox.NetworkPolicy{DefaultAction: "deny", Egress: egress}, nil
+	case Full:
 		return nil, nil
 	case GitHub:
 		return &opensandbox.NetworkPolicy{
