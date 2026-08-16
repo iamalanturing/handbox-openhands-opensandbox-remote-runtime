@@ -57,14 +57,19 @@ to already be set up:
 
 ## Configuration
 
-`handbox` is configured via a file (`handbox.toml`) or environment
-variables, covering:
+`handbox` is configured entirely via environment variables (see
+`internal/config`):
 
-- listen address/port
-- OpenSandbox API URL and API key
-- network-level state file path
-- the research-level egress allowlist (configurable, not hardcoded)
-- `single_use_level` (default `true` — see below)
+| Variable | Required | Default | Purpose |
+|---|---|---|---|
+| `HANDBOX_OPENSANDBOX_URL` | yes | — | OpenSandbox API base URL |
+| `HANDBOX_OPENSANDBOX_API_KEY` | yes | — | Sent as `OPEN-SANDBOX-API-KEY` to OpenSandbox |
+| `HANDBOX_SANDBOX_API_KEY` | yes | — | Must match the `SANDBOX_API_KEY` OpenHands sends on every Remote Runtime request |
+| `HANDBOX_LISTEN_ADDR` | no | `:8080` | Address handbox's own HTTP server listens on |
+| `HANDBOX_STATE_FILE` | no | `/var/lib/handbox/level.state` | Network-level state file path — must be a host path, never bind-mounted into any container the agent can reach |
+| `HANDBOX_SINGLE_USE_LEVEL` | no | `true` | Whether a selected level is consumed by the `/start` call that reads it (see Network levels below) |
+| `HANDBOX_RESEARCH_ALLOWLIST` | no | built-in list | Comma-separated egress allowlist for the Research level |
+| `HANDBOX_OLLAMA_HOST` | no | *(empty)* | FQDN Offline allows egress to, so the sandbox can still reach Ollama. Must be a hostname (e.g. `host.docker.internal`) — OpenSandbox's egress rules don't support IP/CIDR targets, so a raw IP is rejected at startup. Left empty, Offline denies everything, including Ollama. |
 
 `handbox` needs **no Docker socket access** — only outbound HTTP reachability
 to OpenSandbox's API. This is a meaningful improvement over OpenHands'
@@ -83,10 +88,17 @@ from the state file and builds the corresponding OpenSandbox `networkPolicy`:
 | Level | State file value | `networkPolicy` sent to OpenSandbox |
 |---|---|---|
 | ⚪ Ask (default / unset) | `ask`, missing, or any unrecognized value | **No sandbox is created.** `/start` returns an error rather than guessing or falling back to a default level. |
-| 🔴 Offline | `offline` | Omit the field entirely (unrestricted default networking) — verify Ollama reachability under this before relying on it. |
+| 🔴 Offline | `offline` | `defaultAction: deny`, egress allowed only to `HANDBOX_OLLAMA_HOST` if configured. Fails closed: an unconfigured Ollama host means Offline denies everything, including Ollama itself, rather than silently granting full network access. |
 | 🟡 GitHub-only | `github` | `defaultAction: deny`, egress allowed to `github.com`, `api.github.com`, `*.githubusercontent.com`, `codeload.github.com`. |
-| 🟢 Research | `research` | Same as GitHub-only, plus a configurable allowlist for documentation/search (e.g. `*.python.org`, `pypi.org`, `*.npmjs.org`, `stackoverflow.com`, `developer.mozilla.org`, `en.wikipedia.org`). |
+| 🟢 Research | `research` | Same as GitHub-only, plus a configurable allowlist for documentation/search (e.g. `*.python.org`, `pypi.org`, `*.npmjs.org`, `stackoverflow.com`, `developer.mozilla.org`, `en.wikipedia.org`) via `HANDBOX_RESEARCH_ALLOWLIST`. |
 | 🟣 Full | `full` | Omit the field entirely (unrestricted networking) — rare, deliberate, no filtering. |
+
+Whether Ollama is actually reachable via a hostname like `host.docker.internal`
+from inside a sandbox (as opposed to only by IP, which OpenSandbox's egress
+rules can't express at all) is unverified — see the implementation spec's
+Known Unknowns and the code comment on `levels.Policy`. This needs testing
+against a live OpenSandbox instance before Offline's behavior can be
+considered settled.
 
 Every level value is **single-use**: it's consumed and reset back to `ask`
 by the `/start` call that reads it, not by anything happening later (see the
