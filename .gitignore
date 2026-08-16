@@ -1,0 +1,60 @@
+# --- Secrets / credentials ---
+*.env
+.env
+.env.*
+**/session_api_key*
+**/api_key*
+**/*_key.json
+**/*.pem
+**/*.key
+config.local.*
+config.local.toml
+config.local.yaml
+secrets/
+
+# --- Runtime state (network-level state file, never commit) ---
+/state/
+level.state
+*.state
+
+# --- Build artifacts ---
+bin/
+dist/
+handbox
+handbox-*
+*.exe
+*.test
+*.out
+
+# --- Go ---
+vendor/
+go.work
+go.work.sum
+
+# --- Logs / local dev ---
+*.log
+logs/
+tmp/
+*.tmp
+
+# --- Editor / IDE ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# --- OS cruft ---
+.DS_Store
+Thumbs.db
+
+# --- Local testing artifacts ---
+*.local.json
+*.local.yaml
+test-output/
+coverage.out
+coverage.html
+
+# --- Container/OpenSandbox local artifacts ---
+.opensandbox/
+*.sandbox-state
