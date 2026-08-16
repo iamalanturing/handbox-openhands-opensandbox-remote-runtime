@@ -2,6 +2,8 @@ package levels
 
 import (
 	"errors"
+	"fmt"
+	"net"
 
 	"github.com/iamalanturing/handbox-openhands-opensandbox-remote-runtime/internal/opensandbox"
 )
@@ -43,12 +45,18 @@ var DefaultResearchAllowlist = []string{
 // Ollama — a misconfigured Offline level fails closed (the sandbox can't
 // reach the LLM and the failure is obvious) rather than failing open
 // (silently granting full network access, which would defeat the whole
-// point of a level named "Offline").
+// point of a level named "Offline"). If it turns out Ollama is only
+// reachable by IP in the real deployment (observed in earlier prototyping
+// of a different configuration), this whole approach needs revisiting —
+// OpenSandbox's egress rules can't express an IP-only allow rule at all.
 func Policy(level Level, researchAllowlist []string, ollamaHost string) (*opensandbox.NetworkPolicy, error) {
 	switch level {
 	case Offline:
 		var egress []opensandbox.EgressRule
 		if ollamaHost != "" {
+			if net.ParseIP(ollamaHost) != nil {
+				return nil, fmt.Errorf("ollamaHost %q is an IP address; OpenSandbox's egress rules only support FQDN/wildcard targets, not IP/CIDR — configure a hostname instead", ollamaHost)
+			}
 			egress = []opensandbox.EgressRule{{Action: "allow", Target: ollamaHost}}
 		}
 		return &opensandbox.NetworkPolicy{DefaultAction: "deny", Egress: egress}, nil

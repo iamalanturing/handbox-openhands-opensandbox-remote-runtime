@@ -61,6 +61,18 @@ func TestPolicy_OfflineWithoutOllamaHostDeniesEverything(t *testing.T) {
 	}
 }
 
+func TestPolicy_OfflineRejectsIPOllamaHost(t *testing.T) {
+	// OpenSandbox's egress rules only accept FQDN/wildcard targets, not
+	// IP/CIDR (confirmed against the OpenSandbox API spec) — a raw IP here
+	// must fail loudly at Policy() rather than silently building a rule
+	// OpenSandbox will reject or ignore.
+	for _, host := range []string{"127.0.0.1", "172.17.0.1", "::1"} {
+		if _, err := Policy(Offline, nil, host); err == nil {
+			t.Errorf("Policy(Offline, ollamaHost=%q) error = nil, want error rejecting the IP", host)
+		}
+	}
+}
+
 func TestPolicy_GitHub(t *testing.T) {
 	policy, err := Policy(GitHub, nil, "")
 	if err != nil {
