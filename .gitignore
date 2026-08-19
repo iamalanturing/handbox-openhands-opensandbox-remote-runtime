@@ -20,8 +20,8 @@ level.state
 # --- Build artifacts ---
 bin/
 dist/
-handbox
-handbox-*
+/handbox
+/handbox-*
 *.exe
 *.test
 *.out
