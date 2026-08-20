@@ -35,6 +35,14 @@ func main() {
 	httpServer := &http.Server{
 		Addr:    cfg.ListenAddr,
 		Handler: srv.Handler(),
+		// Without ReadHeaderTimeout in particular, a client that opens a
+		// connection and trickles headers in slowly can tie it up
+		// indefinitely (Slowloris-style). The other three bound how long a
+		// single request/response and idle keep-alive connection can run.
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       120 * time.Second,
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)

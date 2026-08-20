@@ -46,6 +46,13 @@ const sessionAPIKeyEnvVar = "SESSION_API_KEY"
 // (ghcr.io/openhands/agent-server) in v1.
 const registryPrefix = "ghcr.io/openhands"
 
+// maxRequestBodyBytes caps every decoded request body. Auth runs before
+// any body is read, so this only bounds a caller that already holds a
+// valid SANDBOX_API_KEY - but "authenticated" isn't the same as
+// "trusted to send an unbounded body", and json.Decode has no size limit
+// of its own.
+const maxRequestBodyBytes = 1 << 20 // 1 MiB
+
 type startRequest struct {
 	Image          string            `json:"image"`
 	Command        []string          `json:"command"`
@@ -70,6 +77,7 @@ type startResponse struct {
 
 func (s *Server) handleStart(w http.ResponseWriter, r *http.Request) {
 	var req startRequest
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodyBytes)
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
@@ -179,6 +187,7 @@ type runtimeIDRequest struct {
 
 func (s *Server) decodeRuntimeIDRequest(w http.ResponseWriter, r *http.Request) (runtimeIDRequest, bool) {
 	var req runtimeIDRequest
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodyBytes)
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.RuntimeID == "" {
 		writeError(w, http.StatusBadRequest, "runtime_id is required")
 		return runtimeIDRequest{}, false

@@ -290,6 +290,35 @@ func TestStart_FullOmitsNetworkPolicy(t *testing.T) {
 	}
 }
 
+func TestStart_RejectsOversizedBody(t *testing.T) {
+	fake := &fakeSandboxClient{}
+	srv, _ := newTestServer(t, fake, true)
+	handler := srv.Handler()
+
+	// A body larger than maxRequestBodyBytes, disguised as a legitimate
+	// field so this exercises the size cap rather than a JSON syntax error.
+	oversizedEnv := make(map[string]string, 1)
+	oversizedEnv["PADDING"] = strings.Repeat("x", maxRequestBodyBytes+1)
+	body, err := json.Marshal(startRequest{
+		Image: "img", Command: []string{"/start"}, SessionID: "sess-1", Environment: oversizedEnv,
+	})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/start", bytes.NewReader(body))
+	req.Header.Set(sandboxAPIKeyHeader, testAPIKey)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want 400 for oversized body", rec.Code)
+	}
+	if fake.createCallCount() != 0 {
+		t.Errorf("CreateSandbox called %d times, want 0", fake.createCallCount())
+	}
+}
+
 func TestStart_MissingSessionID(t *testing.T) {
 	srv, _ := newTestServer(t, &fakeSandboxClient{}, true)
 	rec := doRequest(srv.Handler(), http.MethodPost, "/start", testAPIKey, startRequest{Image: "img", Command: []string{"/start"}})

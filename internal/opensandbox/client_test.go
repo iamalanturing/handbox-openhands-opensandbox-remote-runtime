@@ -17,6 +17,19 @@ func newTestServer(t *testing.T, handler http.HandlerFunc) (*Client, *httptest.S
 	return NewClient(srv.URL, "test-api-key", srv.Client()), srv
 }
 
+func TestNewClient_DefaultsToATimeoutWhenHTTPClientIsNil(t *testing.T) {
+	// http.DefaultClient has no timeout at all - a hung OpenSandbox server
+	// would block the caller forever. NewClient(nil) must not fall back to
+	// it directly.
+	c := NewClient("https://example.com", "key", nil)
+	if c.httpClient.Timeout <= 0 {
+		t.Errorf("httpClient.Timeout = %v, want a positive default", c.httpClient.Timeout)
+	}
+	if c.httpClient == http.DefaultClient {
+		t.Error("httpClient is http.DefaultClient, want a client with its own timeout")
+	}
+}
+
 func TestCreateSandbox_RequestShapeAndResponseParsing(t *testing.T) {
 	var gotMethod, gotPath, gotHeader string
 	var gotBody []byte
