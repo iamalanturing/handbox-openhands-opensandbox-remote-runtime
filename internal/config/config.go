@@ -17,14 +17,21 @@ const (
 	envOpenSandboxURL    = "HANDBOX_OPENSANDBOX_URL"
 	envOpenSandboxAPIKey = "HANDBOX_OPENSANDBOX_API_KEY"
 	envSandboxAPIKey     = "HANDBOX_SANDBOX_API_KEY"
-	envStateFilePath     = "HANDBOX_STATE_FILE"
 	envSingleUseLevel    = "HANDBOX_SINGLE_USE_LEVEL"
 	envResearchAllowlist = "HANDBOX_RESEARCH_ALLOWLIST"
 	envOllamaHost        = "HANDBOX_OLLAMA_HOST"
 
 	defaultListenAddr = ":8080"
-	defaultStateFile  = "/var/lib/handbox/level.state"
 	defaultSingleUse  = true
+)
+
+// EnvStateFilePath and DefaultStateFile are exported so cmd/ai-level can
+// resolve the same state file path handbox itself uses without
+// duplicating the literal string — the two processes must agree on this
+// path or ai-level's writes go nowhere handbox will ever read them.
+const (
+	EnvStateFilePath = "HANDBOX_STATE_FILE"
+	DefaultStateFile = "/var/lib/handbox/level.state"
 )
 
 // Config is handbox's own configuration, loaded once at startup.
@@ -64,7 +71,7 @@ func Load() (*Config, error) {
 		OpenSandboxURL:    os.Getenv(envOpenSandboxURL),
 		OpenSandboxAPIKey: os.Getenv(envOpenSandboxAPIKey),
 		SandboxAPIKey:     os.Getenv(envSandboxAPIKey),
-		StateFilePath:     getEnvDefault(envStateFilePath, defaultStateFile),
+		StateFilePath:     getEnvDefault(EnvStateFilePath, DefaultStateFile),
 		SingleUseLevel:    defaultSingleUse,
 		OllamaHost:        os.Getenv(envOllamaHost),
 	}

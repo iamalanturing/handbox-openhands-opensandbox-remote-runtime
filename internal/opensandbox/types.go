@@ -37,12 +37,22 @@ type ResourceLimits struct {
 // spec, omitting the field entirely and sending an empty object mean
 // different things to OpenSandbox (no egress sidecar vs. an allow-all
 // sidecar).
+//
+// Environment is a new assumption, not confirmed from the spec: the
+// create-sandbox example in Section 5 doesn't show any environment
+// variable mechanism at all, even though OpenHands' /start request always
+// carries one (LLM_MODEL, etc.) that has to reach the container somehow.
+// "env" as a plain string map is a guess at the field name and shape,
+// picked because it's the most common convention and matches this API's
+// existing camelCase style — not verified against the real OpenAPI spec.
+// Flag this explicitly when testing against a live OpenSandbox instance.
 type CreateSandboxRequest struct {
-	Image          Image           `json:"image"`
-	Entrypoint     []string        `json:"entrypoint"`
-	Timeout        int             `json:"timeout,omitempty"`
-	ResourceLimits *ResourceLimits `json:"resourceLimits,omitempty"`
-	NetworkPolicy  *NetworkPolicy  `json:"networkPolicy,omitempty"`
+	Image          Image             `json:"image"`
+	Entrypoint     []string          `json:"entrypoint"`
+	Timeout        int               `json:"timeout,omitempty"`
+	ResourceLimits *ResourceLimits   `json:"resourceLimits,omitempty"`
+	NetworkPolicy  *NetworkPolicy    `json:"networkPolicy,omitempty"`
+	Environment    map[string]string `json:"env,omitempty"`
 }
 
 // SandboxStatus is a sandbox's lifecycle state as reported by OpenSandbox.

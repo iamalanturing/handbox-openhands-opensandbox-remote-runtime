@@ -12,7 +12,7 @@ func setRequired(t *testing.T) {
 	t.Setenv(envSandboxAPIKey, "sandbox-key")
 	// Clear everything else so tests don't inherit the running
 	// environment's actual values.
-	for _, key := range []string{envListenAddr, envStateFilePath, envSingleUseLevel, envResearchAllowlist, envOllamaHost} {
+	for _, key := range []string{envListenAddr, EnvStateFilePath, envSingleUseLevel, envResearchAllowlist, envOllamaHost} {
 		t.Setenv(key, "")
 	}
 }
@@ -36,8 +36,8 @@ func TestLoad_RequiredFieldsAndDefaults(t *testing.T) {
 	if cfg.ListenAddr != defaultListenAddr {
 		t.Errorf("ListenAddr = %q, want default %q", cfg.ListenAddr, defaultListenAddr)
 	}
-	if cfg.StateFilePath != defaultStateFile {
-		t.Errorf("StateFilePath = %q, want default %q", cfg.StateFilePath, defaultStateFile)
+	if cfg.StateFilePath != DefaultStateFile {
+		t.Errorf("StateFilePath = %q, want default %q", cfg.StateFilePath, DefaultStateFile)
 	}
 	if cfg.SingleUseLevel != true {
 		t.Errorf("SingleUseLevel = %v, want true (default)", cfg.SingleUseLevel)
@@ -55,7 +55,7 @@ func TestLoad_MissingRequiredVars(t *testing.T) {
 	t.Setenv(envOpenSandboxAPIKey, "")
 	t.Setenv(envSandboxAPIKey, "")
 	t.Setenv(envListenAddr, "")
-	t.Setenv(envStateFilePath, "")
+	t.Setenv(EnvStateFilePath, "")
 	t.Setenv(envSingleUseLevel, "")
 	t.Setenv(envResearchAllowlist, "")
 	t.Setenv(envOllamaHost, "")
@@ -125,7 +125,7 @@ func TestLoad_OllamaHostAcceptsHostname(t *testing.T) {
 func TestLoad_CustomListenAddrAndStateFile(t *testing.T) {
 	setRequired(t)
 	t.Setenv(envListenAddr, "127.0.0.1:9000")
-	t.Setenv(envStateFilePath, "/tmp/custom-level.state")
+	t.Setenv(EnvStateFilePath, "/tmp/custom-level.state")
 
 	cfg, err := Load()
 	if err != nil {
