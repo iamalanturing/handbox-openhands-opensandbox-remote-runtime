@@ -10,9 +10,19 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 const apiKeyHeader = "OPEN-SANDBOX-API-KEY"
+
+// defaultClientTimeout bounds every OpenSandbox request when the caller
+// doesn't supply its own *http.Client. http.DefaultClient has no timeout
+// at all, so a hung OpenSandbox server would otherwise block the calling
+// handler goroutine forever - resource exhaustion on handbox itself
+// under nothing worse than a slow or unresponsive upstream. Generous
+// enough for a cold sandbox create (image pull + Kata VM boot); tune via
+// a caller-supplied *http.Client if that's ever not enough.
+const defaultClientTimeout = 60 * time.Second
 
 // Client is an HTTP client for the OpenSandbox sandbox lifecycle API.
 // PATCH /sandboxes/{id}/metadata is deliberately not implemented — the
@@ -25,11 +35,12 @@ type Client struct {
 
 // NewClient returns a Client for the OpenSandbox API at baseURL,
 // authenticating with apiKey (sent as the OPEN-SANDBOX-API-KEY header on
-// every request). httpClient may be nil, in which case http.DefaultClient
-// is used; tests pass one pointed at an httptest.Server.
+// every request). httpClient may be nil, in which case a client with
+// defaultClientTimeout is used (deliberately not http.DefaultClient,
+// which has no timeout); tests pass one pointed at an httptest.Server.
 func NewClient(baseURL, apiKey string, httpClient *http.Client) *Client {
 	if httpClient == nil {
-		httpClient = http.DefaultClient
+		httpClient = &http.Client{Timeout: defaultClientTimeout}
 	}
 	return &Client{
 		baseURL:    strings.TrimRight(baseURL, "/"),

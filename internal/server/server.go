@@ -3,6 +3,7 @@ package server
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"net/http"
 	"sync"
@@ -89,7 +90,13 @@ const sandboxAPIKeyHeader = "X-API-Key"
 func (s *Server) withAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		key := r.Header.Get(sandboxAPIKeyHeader)
-		if s.cfg.SandboxAPIKey == "" || key != s.cfg.SandboxAPIKey {
+		// Constant-time comparison: a plain != leaks timing information
+		// proportional to the number of matching leading bytes, which is
+		// exactly the kind of oracle that makes brute-forcing a secret
+		// practical over enough requests.
+		match := s.cfg.SandboxAPIKey != "" &&
+			subtle.ConstantTimeCompare([]byte(key), []byte(s.cfg.SandboxAPIKey)) == 1
+		if !match {
 			writeError(w, http.StatusUnauthorized, "invalid or missing API key")
 			return
 		}
